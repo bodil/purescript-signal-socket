@@ -6,9 +6,11 @@ import Control.Monad.Aff (Aff, makeAff)
 import Control.Monad.Aff.AVar (AVAR)
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Class (liftEff)
+import Control.Monad.Eff.Console (CONSOLE, log)
 import Control.Monad.Eff.Exception (Error, error)
 import Control.Monad.Eff.Ref (REF, writeRef, readRef, newRef)
 import Data.List (List(..), toList, fromList)
+import Data.Maybe (Maybe(..))
 import Signal (Signal, (~>), runSignal)
 import Signal.Channel (CHANNEL)
 import Signal.Socket (SOCKET)
@@ -48,6 +50,9 @@ expect time sig vals = timeout time $ expectFn sig vals
 
 
 
+debug :: forall a e. (Show a) => String -> a -> Eff (console :: CONSOLE | e) Unit
+debug s o = log $ s ++ show o
+
 onSocket :: forall e. S.Socket -> S.Event String -> Eff (socket :: SOCKET | e) Unit
 onSocket socket e = case e of
   S.Connected -> do
@@ -56,7 +61,21 @@ onSocket socket e = case e of
   S.Data "hai lol" -> S.end socket
   _ -> return unit
 
-main :: forall e. Eff (timer :: TIMER, avar :: AVAR, testOutput :: TESTOUTPUT, ref :: REF, socket :: SOCKET, channel :: CHANNEL | e) Unit
+splitting :: forall e. S.Socket -> S.Event String -> Eff (socket :: SOCKET | e) Unit
+splitting socket e = case e of
+  S.Connected -> do
+    S.write socket "hai lol "
+    return unit
+  S.Data "hai lol " -> do
+    S.write socket "omg\r\nomg "
+    return unit
+  S.Data "omg\r\nomg " -> do
+    S.write socket "wtf bbq\r\n"
+    return unit
+  S.Data "wtf bbq\r\n" -> S.end socket
+  _ -> return unit
+
+main :: forall e. Eff (timer :: TIMER, avar :: AVAR, testOutput :: TESTOUTPUT, ref :: REF, socket :: SOCKET, channel :: CHANNEL, console :: CONSOLE | e) Unit
 main = runTest do
   test "connect to echo server" do
     echo <- echoServer
@@ -66,7 +85,29 @@ main = runTest do
     expect 100 sig [S.Connecting, S.Connected, S.Data "hi\r\n", S.Data "hai lol", S.Closed]
     liftEff $ S.end socket
     stopEchoServer echo
+
   test "connection error" do
     socket <- liftEff $ S.connect "127.0.0.1" 58538
     let sig = S.subscribe socket
     expect 100 sig [S.Connecting, S.Error (error "connect ECONNREFUSED 127.0.0.1:58538")]
+
+  test "data signal" do
+    echo <- echoServer
+    socket <- liftEff $ S.connect "127.0.0.1" 58537
+    let sig = S.subscribe socket
+    liftEff $ runSignal $ sig ~> splitting socket
+    let output = S.onlyData sig
+    expect 100 output [Nothing, Just "hi\r\n", Just "hai lol ", Just "omg\r\nomg ", Just "wtf bbq\r\n", Nothing]
+    liftEff $ S.end socket
+    stopEchoServer echo
+
+  test "line splitting" do
+    echo <- echoServer
+    socket <- liftEff $ S.connect "127.0.0.1" 58537
+    let sig = S.subscribe socket
+    liftEff $ runSignal $ sig ~> splitting socket
+    let output = S.onlyData sig
+    let lines = S.split "\r\n" $ output
+    expect 100 lines [Nothing, Just "hi", Just "hai lol omg", Just "omg wtf bbq", Nothing]
+    liftEff $ S.end socket
+    stopEchoServer echo

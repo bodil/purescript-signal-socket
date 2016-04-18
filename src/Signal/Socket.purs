@@ -10,6 +10,8 @@ module Signal.Socket
   , decode
   , subscribeAs
   , subscribe
+  , onlyData
+  , split
   , writeRaw
   , writeAs
   , write
@@ -24,12 +26,14 @@ import Prelude
 
 import Control.Monad.Eff (Eff)
 import Control.Monad.Eff.Exception (Error, message)
+import Data.Array as Array
 import Data.Foreign (Foreign, unsafeFromForeign, toForeign)
-import Data.Maybe (Maybe(..))
+import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Nullable as Null
+import Data.String as Str
 import Node.Buffer (Buffer)
 import Node.Encoding (Encoding(UTF8))
-import Signal (Signal)
+import Signal (Signal, (~>))
 import Signal.Channel (Channel, CHANNEL)
 import Signal.Channel as Channel
 
@@ -134,6 +138,29 @@ subscribeAs encoding = subscribeRaw >>> decode encoding
 
 subscribe :: Socket -> Signal (Event String)
 subscribe = subscribeRaw >>> decode UTF8
+
+onlyData :: forall a. Signal (Event a) -> Signal (Maybe a)
+onlyData = Signal.filterMap process Nothing
+  where process (Data s) = Just (Just s)
+        process Closed = Just (Nothing)
+        process _ = Nothing
+
+split :: String -> Signal (Maybe String) -> Signal (Maybe String)
+split term strings = Signal.flatten outs Nothing
+  where folding :: Signal {buffer :: String, next :: Array (Maybe String)}
+        folding = Signal.foldp process { buffer: "", next: [] } strings
+        outs = map (\state -> state.next) folding
+        process (Just s) state =
+          let buf = state.buffer ++ s
+              lines = Str.split term buf
+          in if Array.length lines > 1
+             then { buffer: fromMaybe "" $ Array.last lines
+                  , next: Array.slice 0 (-1) lines ~> Just
+                  }
+             else { buffer: fromMaybe "" $ Array.head lines
+                  , next: []
+                  }
+        process Nothing state = { buffer: "", next: if Str.length state.buffer > 0 then [Just state.buffer, Nothing] else [Nothing] }
 
 writeRaw :: forall e. Socket -> Buffer -> Eff (socket :: SOCKET | e) Boolean
 writeRaw (Socket s _) = nodeWriteRaw s

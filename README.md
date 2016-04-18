@@ -43,6 +43,23 @@ To process the event stream:
         -- etc
 ```
 
+You can also get a signal of just the data from the socket (of type
+`Signal (Maybe String)`, which will start at `Nothing`, yield `Just`s
+of each data packet, then go back to `Nothing` when the socket
+closes):
+
+```purescript
+  let dataSignal = S.onlyData eventSignal
+```
+
+If you prefer to receive lines, you can split the data stream on a
+given string, eg. newlines - this will also buffer output for you
+until a complete line has been received:
+
+```purescript
+  let lines = S.split "\r\n" dataSignal
+```
+
 ## Licence
 
 Copyright 2016 Bodil Stokke
