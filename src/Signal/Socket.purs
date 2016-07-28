@@ -34,6 +34,7 @@ import Data.String as Str
 import Node.Buffer (Buffer)
 import Node.Encoding (Encoding(UTF8))
 import Signal (Signal, (~>))
+import Signal as Signal
 import Signal.Channel (Channel, CHANNEL)
 import Signal.Channel as Channel
 
@@ -75,8 +76,8 @@ instance showEvent :: (Show a) => Show (Event a) where
   show Drain = "Drain"
   show Closed = "Closed"
   show Timeout = "Timeout"
-  show (Data a) = "Data <\"" ++ show a ++ "\">"
-  show (Error e) = "Error <" ++ message e ++ ">"
+  show (Data a) = "Data <\"" <> show a <> "\">"
+  show (Error e) = "Error <" <> message e <> ">"
 
 type ConnectOptions =
   { port :: Int
@@ -104,7 +105,7 @@ processNodeEvent channel ev = case unpackNodeEvent ev of
   { event: "drain" } -> Channel.send channel Drain
   { event: "close" } -> Channel.send channel Closed
   { event: "timeout" } -> Channel.send channel Timeout
-  _ -> return unit
+  _ -> pure unit
 
 connectOpt :: forall e. ConnectOptions -> Eff (socket :: SOCKET, channel :: CHANNEL | e) Socket
 connectOpt opts = do
@@ -114,7 +115,7 @@ connectOpt opts = do
                 family: Null.toNullable opts.family }
   channel <- Channel.channel Connecting
   socket <- nodeConnect (toForeign opts') channel (processNodeEvent channel)
-  return $ Socket socket channel
+  pure $ Socket socket channel
 
 connect :: forall e. String -> Int -> Eff (socket :: SOCKET, channel :: CHANNEL | e) Socket
 connect host port = connectOpt $ { host, port, localAddress: Nothing, localPort: Nothing, family: Nothing }
@@ -151,7 +152,7 @@ split term strings = Signal.flatten outs Nothing
         folding = Signal.foldp process { buffer: "", next: [] } strings
         outs = map (\state -> state.next) folding
         process (Just s) state =
-          let buf = state.buffer ++ s
+          let buf = state.buffer <> s
               lines = Str.split term buf
           in if Array.length lines > 1
              then { buffer: fromMaybe "" $ Array.last lines
