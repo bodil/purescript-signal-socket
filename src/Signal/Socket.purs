@@ -23,20 +23,20 @@ module Signal.Socket
   ) where
 
 import Prelude
-
-import Control.Monad.Eff (Eff)
-import Control.Monad.Eff.Exception (Error, message)
 import Data.Array as Array
-import Data.Foreign (Foreign, unsafeFromForeign, toForeign)
-import Data.Maybe (Maybe(..), fromMaybe)
 import Data.Nullable as Null
 import Data.String as Str
+import Signal as Signal
+import Signal.Channel as Channel
+import Control.Monad.Eff (Eff)
+import Control.Monad.Eff.Exception (Error, message)
+import Data.Foreign (Foreign, unsafeFromForeign, toForeign)
+import Data.Maybe (Maybe(..), fromMaybe)
+import Data.String (Pattern(Pattern))
 import Node.Buffer (Buffer)
 import Node.Encoding (Encoding(UTF8))
 import Signal (Signal, (~>))
-import Signal as Signal
 import Signal.Channel (Channel, CHANNEL)
-import Signal.Channel as Channel
 
 foreign import data SOCKET :: !
 foreign import data NodeSocket :: *
@@ -153,7 +153,7 @@ split term strings = Signal.flatten outs Nothing
         outs = map (\state -> state.next) folding
         process (Just s) state =
           let buf = state.buffer <> s
-              lines = Str.split term buf
+              lines = Str.split (Pattern term) buf
           in if Array.length lines > 1
              then { buffer: fromMaybe "" $ Array.last lines
                   , next: Array.slice 0 (-1) lines ~> Just
