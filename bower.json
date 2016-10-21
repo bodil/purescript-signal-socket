@@ -1,6 +1,6 @@
 {
   "name": "purescript-signal-socket",
-  "version": "2.0.0",
+  "version": "3.0.0",
   "description": "Node sockets with a Signal interface",
   "license": "LGPL-3.0+",
   "repository": {
