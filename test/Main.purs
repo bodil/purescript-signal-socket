@@ -21,7 +21,7 @@ import Test.Unit (Test, test, timeout)
 import Test.Unit.Console (TESTOUTPUT)
 import Test.Unit.Main (runTest)
 
-foreign import data EchoServer :: *
+foreign import data EchoServer :: Type
 foreign import nEchoServer :: forall e. (Error -> Eff e Unit) -> (EchoServer -> Eff e Unit) -> Eff e Unit
 foreign import nStopEchoServer :: forall e. EchoServer -> (Error -> Eff e Unit) -> (Unit -> Eff e Unit) -> Eff e Unit
 
@@ -33,7 +33,7 @@ stopEchoServer echo = makeAff $ nStopEchoServer echo
 
 
 
-expectFn :: forall e a. (Eq a, Show a) => Signal a -> Array a -> Test (ref :: REF | e)
+expectFn :: forall e a. Eq a => Show a => Signal a -> Array a -> Test (ref :: REF | e)
 expectFn sig vals = makeAff \fail win -> do
   remaining <- newRef vals
   let getNext val = do
@@ -48,7 +48,7 @@ expectFn sig vals = makeAff \fail win -> do
           Nil -> fail $ error "unexpected emptiness"
   runSignal $ sig ~> getNext
 
-expect :: forall e a. (Eq a, Show a) => Int -> Signal a -> Array a -> Test (avar :: AVAR, timer :: TIMER, ref :: REF | e)
+expect :: forall e a. Eq a => Show a => Int -> Signal a -> Array a -> Test (avar :: AVAR, timer :: TIMER, ref :: REF | e)
 expect time sig vals = timeout time $ expectFn sig vals
 
 
@@ -58,23 +58,15 @@ debug s o = log $ s <> show o
 
 onSocket :: forall e. S.Socket -> S.Event String -> Eff (socket :: SOCKET | e) Unit
 onSocket socket e = case e of
-  S.Connected -> do
-    S.write socket "hai lol"
-    pure unit
+  S.Connected -> pure $ const unit $ S.write socket "hai lol"
   S.Data "hai lol" -> S.end socket
   _ -> pure unit
 
 splitting :: forall e. S.Socket -> S.Event String -> Eff (socket :: SOCKET | e) Unit
 splitting socket e = case e of
-  S.Connected -> do
-    S.write socket "hai lol "
-    pure unit
-  S.Data "hai lol " -> do
-    S.write socket "omg\r\nomg "
-    pure unit
-  S.Data "omg\r\nomg " -> do
-    S.write socket "wtf bbq\r\n"
-    pure unit
+  S.Connected -> pure $ const unit $ S.write socket "hai lol "
+  S.Data "hai lol " -> pure $ const unit $ S.write socket "omg\r\nomg "
+  S.Data "omg\r\nomg " -> pure $ const unit $ S.write socket "wtf bbq\r\n"
   S.Data "wtf bbq\r\n" -> S.end socket
   _ -> pure unit
 
