@@ -28,7 +28,7 @@ import Data.Nullable as Null
 import Data.String as Str
 import Signal as Signal
 import Signal.Channel as Channel
-import Control.Monad.Eff (Eff)
+import Control.Monad.Eff (Eff,kind Effect)
 import Control.Monad.Eff.Exception (Error, message)
 import Data.Foreign (Foreign, unsafeFromForeign, toForeign)
 import Data.Maybe (Maybe(..), fromMaybe)
@@ -38,8 +38,8 @@ import Node.Encoding (Encoding(UTF8))
 import Signal (Signal, (~>))
 import Signal.Channel (Channel, CHANNEL)
 
-foreign import data SOCKET :: !
-foreign import data NodeSocket :: *
+foreign import data SOCKET :: Effect
+foreign import data NodeSocket :: Type
 
 foreign import nodeConnect :: forall e. Foreign -> Channel (Event Buffer) -> (Foreign -> Eff (socket :: SOCKET, channel :: CHANNEL | e) Unit) -> Eff (socket :: SOCKET, channel :: CHANNEL | e) NodeSocket
 foreign import nodeDecode :: String -> Buffer -> String

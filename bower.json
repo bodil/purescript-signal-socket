@@ -14,16 +14,16 @@
     "output"
   ],
   "dependencies": {
-    "purescript-prelude": "^2.1.0",
-    "purescript-eff": "^2.0.0",
-    "purescript-signal": "^8.0.0",
-    "purescript-node-buffer": "^2.0.0",
-    "purescript-maybe": "^2.0.0",
-    "purescript-nullable": "^2.0.0",
-    "purescript-foreign": "^3.0.0"
+    "purescript-foreign": "^4.0.1",
+    "purescript-nullable": "^3.0.0",
+    "purescript-node-buffer": "^3.0.0",
+    "purescript-signal": "^9.0.0",
+    "purescript-eff": "^3.1.0",
+    "purescript-prelude": "^3.0.0",
+    "purescript-maybe": "^3.0.0"
   },
   "devDependencies": {
-    "purescript-test-unit": "^10.0.0",
-    "purescript-aff": "^2.0.0"
+    "purescript-aff": "^3.1.0",
+    "purescript-test-unit": "^11.0.0"
   }
 }
